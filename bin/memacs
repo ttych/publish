@@ -1,0 +1,242 @@
+#!/bin/sh
+# -*- mode: sh -*-
+
+#set -x
+
+MEMACS_UID=`id -u`
+MEMACS_TMP="${MEMACS_TMP:-/tmp/`whoami`.emacs}"
+set -e
+mkdir -p "${MEMACS_TMP}" && chmod 0700 "${MEMACS_TMP}"
+set +e
+MEMACS_DIR="${MEMACS_TMP}/emacs${MEMACS_UID}"
+MEMACS_MAPPING_NAME="_daemon_mapping"
+MEMACS_MAPPING="${MEMACS_DIR}/${MEMACS_MAPPING_NAME}"
+
+
+_emacs()
+{
+    TMPDIR="$MEMACS_TMP" emacs "$@"
+}
+
+_emacsclient()
+{
+    TMPDIR="$MEMACS_TMP" emacsclient "$@"
+}
+
+
+_emacs_daemon_create()
+{
+    [ $# -ne 2 ] && return 1
+    _emacs_daemon_create__n="${1}"
+    _emacs_daemon_create__p="${2:-$PWD}"
+    if [ -z "$_emacs_daemon_create__n" ]; then
+        _emacs_daemon_create__n="${_emacs_daemon_create__p##*/}"
+    fi
+
+    if _emacs_daemon_exist "$_emacs_daemon_create__n"; then
+        echo >&2 "emacs daemon $_emacs_daemon_create__n already exists"
+        return 1
+    fi
+
+    (cd "$_emacs_daemon_create_p" ; _emacs --daemon="$_emacs_daemon_create__n") &&
+        echo "$_emacs_daemon_create__n $_emacs_daemon_create__p" >> "$MEMACS_MAPPING"
+}
+
+_emacs_daemon_list()
+(
+    printf "List of daemons is :\n"
+    cd "$MEMACS_DIR" 2>/dev/null || return 0
+    for _emacs_daemon_list__d in *; do
+        if [ "$_emacs_daemon_list__d" = "${MEMACS_MAPPING_NAME}" ]; then
+            continue
+        fi
+        _emacs_daemon_list__p=`grep -m 1 "^$_emacs_daemon_list__d " "$MEMACS_MAPPING"`
+        _emacs_daemon_list__p="${_emacs_daemon_list__p#* }"
+
+        printf "%s -> %s\n" "$_emacs_daemon_list__d" "$_emacs_daemon_list__p"
+    done
+)
+
+_emacs_daemon_exist()
+{
+    [ -z "$1" ] && return 2
+    [ -r "$MEMACS_DIR/$1" ] && return 0
+    return 1
+}
+
+_emacs_daemon_for_path()
+{
+    _emacs_daemon_for_path=`grep "$1\$" "$MEMACS_MAPPING"`
+    [ $? -ne 0 ] && return 1
+    _emacs_daemon_for_path="${_emacs_daemon_for_path%% *}"
+    return 0
+}
+
+_emacs_daemon_kill()
+{
+    [ -z "$1" ] && return 1
+    _emacsclient -s "$MEMACS_DIR/$1" -e '(kill-emacs)'
+
+    _emacs_daemon_purge
+}
+
+_emacs_daemon_save_kill()
+{
+    [ -z "$1" ] && return 1
+    _emacsclient -s "$MEMACS_DIR/$1" -t  -e '(client-save-kill-emacs)'
+
+    _emacs_daemon_purge
+}
+
+_emacs_daemon_purge()
+{
+    [ -r "$MEMACS_MAPPING" ] || return 0
+    touch "$MEMACS_MAPPING".new
+    while read _emacs_daemon_purge__e; do
+        _emacs_daemon_purge__d="${_emacs_daemon_purge__e%% *}"
+        if [ -r "$MEMACS_DIR/$_emacs_daemon_purge__d" ]; then
+            echo "$_emacs_daemon_purge__e" >> "$MEMACS_MAPPING".new
+        fi
+    done < "$MEMACS_MAPPING"
+    mv "$MEMACS_MAPPING".new "$MEMACS_MAPPING"
+}
+
+_memacs_help()
+{
+    cat <<EOF >&2
+Usage is :
+  $0 ...
+
+with :
+   ...
+EOF
+}
+
+_memacs_list()
+{
+    _emacs_daemon_list
+}
+
+_memacs_kill_all()
+{
+    [ -r "$MEMACS_MAPPING" ] || return 0
+
+    while read _memacs_kill_all__entry; do
+        _memacs_kill_all__d="${_memacs_kill_all__entry%% *}"
+        _emacs_daemon_kill "$_memacs_kill_all__d"
+    done < "$MEMACS_MAPPING"
+}
+
+_memacs_kill()
+{
+    if [ $# -gt 0 ]; then
+        for _memacs_kill__d; do
+            _emacs_daemon_kill "$_memacs_kill__d"
+        done
+    else
+        _memacs_kill_all
+    fi
+}
+
+_memacs_save_kill_all()
+{
+    [ -r "$MEMACS_MAPPING" ] || return 0
+
+    while read _memacs_save_kill_all__entry; do
+        _memacs_save_kill_all__d="${_memacs_save_kill_all__entry%% *}"
+        _emacs_daemon_save_kill "$_memacs_save_kill_all__d"
+    done < "$MEMACS_MAPPING"
+}
+
+_memacs_save_kill()
+{
+    if [ $# -gt 0 ]; then
+        for _memacs_save_kill__d; do
+            _emacs_daemon_save_kill "$_memacs_save_kill__d"
+        done
+    else
+        _memacs_save_kill_all
+    fi
+}
+
+_memacs_daemon()
+{
+    _memacs_daemon__name="${_memacs__daemon}"
+    if [ -z "$_memacs_daemon__name" ]; then
+        _memacs_daemon__name="${PWD##*/}"
+    fi
+    _memacs_daemon__path="${1:-$PWD}"
+
+    _emacs_daemon_create "$_memacs_daemon__name" "$_memacs_daemon__path"
+}
+
+_memacs_daemon_for_file()
+{
+    _memacs_daemon_for_file__p="${1%/*}"
+    if [ -z "$_memacs_daemon_for_file__p" ]; then
+        _memacs_daemon_for_file__p=/
+    elif [ "$_memacs_daemon_for_file__p" = "$1" ] ; then
+        _memacs_daemon_for_file__p=.
+    fi
+    _memacs_daemon_for_file__p=$(cd "$_memacs_daemon_for_file__p" && echo "$PWD")
+
+    _memacs_daemon_for_file__found=$(
+        sort -k 2 -r "$MEMACS_MAPPING" |
+            while read _memacs_daemon_for_file__r_d _memacs_daemon_for_file__r_p; do
+                case "$_memacs_daemon_for_file__p" in
+                    "$_memacs_daemon_for_file__r_p"|"$_memacs_daemon_for_file__r_p"/*)
+                        echo "$_memacs_daemon_for_file__r_d"
+                        break
+                        ;;
+                esac
+            done
+    )
+
+    [ -z "$_memacs_daemon_for_file__found" ] && return 1
+
+    _memacs_daemon_for_file="$_memacs_daemon_for_file__found"
+}
+
+_memacs_edit()
+{
+    # which daemon
+    # - daemon
+    # - file
+    # - pwd
+    _memacs_edit__daemon=
+    if [ -n "$_memacs__daemon" ]; then
+        _memacs_edit__daemon="${_memacs__daemon}"
+    elif [ -n "$1" ]; then
+        _memacs_daemon_for_file "$1" || return 1
+        _memacs_edit__daemon="$_memacs_daemon_for_file"
+    else
+        _memacs_edit__daemon="${PWD##*/}"
+    fi
+
+    _emacsclient -s "$MEMACS_DIR/$_memacs_edit__daemon" -t "$@"
+}
+
+_memacs()
+{
+
+    _memacs__daemon=
+    _memacs__command=edit
+    while getopts :hlkxds: opt; do
+        case $opt in
+            h) _memacs__command=help ;;
+            l) _memacs__command=list ;;
+            k) _memacs__command=kill ;;
+            x) _memacs__command=save_kill ;;
+            d) _memacs__command=daemon ;;
+            s) _memacs__daemon="$OPTARG" ;;
+        esac
+    done
+    shift $(($OPTIND - 1))
+    _memacs_${_memacs__command} "$@"
+}
+
+case "$0" in
+    */memacs|*/me)
+        _memacs "$@"
+        ;;
+esac
