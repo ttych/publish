@@ -1,0 +1,240 @@
+#!/bin/sh
+# -*- mode: sh -*-
+
+# set -x
+
+
+git_remote_url()
+{
+    git_remote_url=$(cd "${1:-.}" ; git remote get-url origin)
+}
+
+git_clone()
+{
+    mkdir -p "${2%/*}"
+    git clone -q "$1" "$2"
+}
+
+git_update()
+{
+    if [ -n "$GIT_UPDATE_FORCE" ]; then
+        git_update_force "$@"
+    else
+        git_update_simple "$@"
+    fi
+}
+
+git_update_simple()
+{
+    if git rev-parse @{u} >/dev/null 2>&1; then
+        git reset --quiet --hard HEAD &&
+            git pull --quiet --no-rebase --ff-only
+    fi
+    git submodule --quiet update --recursive
+}
+
+git_update_force()
+{
+    if git rev-parse @{u} >/dev/null 2>&1; then
+        git_branch_cur=`git rev-parse --abbrev-ref HEAD`
+        git_rem=`git branch --format '%(upstream:remotename)'`
+        git_branch_rem=`git branch --format '%(upstream)'`
+        git_branch_rem="${git_branch_rem#*/$git_rem/}"
+
+        git branch -d -r "$git_rem/$git_branch_rem"
+        git fetch "$git_rem" "$git_branch_rem"
+
+        git checkout -f "$git_rem/$git_branch_rem"
+        git branch -f "$git_branch_cur" "$git_rem/$git_branch_rem"
+        git checkout -f  "$git_branch_cur"
+    fi
+    git submodule --quiet update --recursive
+}
+
+PYENV_ORGA="${PYENV_ORGA:-https://github.com/pyenv}"
+PYENV_REPO="${PYENV_REPO:-pyenv}"
+PYENV_PLUGINS="${PYENV_PLUGINS:-pyenv-virtualenv }"
+
+
+pyenv_mgr_help()
+{
+    cat <<EOF
+Usage is :
+      $0 [-h] [-D] <action> <action_parameters>
+
+with action in :
+     help
+     info
+     install
+     update
+     fupdate
+     init
+EOF
+}
+
+pyenv_check()
+{
+    [ -z "$1" ] && return 1
+    [ -d "$1" ] || return 1
+    [ -x "$1/bin/pyenv" ] || return 1
+    PYENV_ROOT="$1" "$1/bin/pyenv" versions >/dev/null
+}
+
+pyenv_exec()
+{
+    pyenv_root "$1"
+    shift
+    PYENV_ROOT="$pyenv_root" "$pyenv_root/bin/pyenv" "$@"
+}
+
+pyenv_root()
+{
+    pyenv_root="${1:-$pyenv_root}"
+    pyenv_root="${pyenv_root:-$PYENV_ROOT}"
+
+    [ -n "$pyenv_root" ] && return 0
+
+    for pyenv_root in "${HOME_ALT:+$HOME_ALT/.pyenv}" \
+                          "$HOME/.pyenv" ;
+    do
+        pyenv_check "$pyenv_root" && break
+    done
+}
+
+pyenv_mgr_info()
+{
+    pyenv_root "$1"
+    pyenv_check "$pyenv_root" || {
+        echo >&2 "no valid pyenv found at \"$pyenv_root\""
+        return 1
+    }
+
+    cat <<EOF
+$(pyenv_mgr_info_pyenv)
+
+$(pyenv_mgr_info_plugins)
+
+$(pyenv_mgr_info_ruby)
+EOF
+}
+
+pyenv_mgr_info_pyenv()
+{
+    echo '# pyenv distribution found:'
+    git_remote_url "$pyenv_root"
+    echo "$pyenv_root: $git_remote_url"
+}
+
+pyenv_mgr_info_ruby()
+{
+    echo '# installed ruby versions:'
+    PYENV_ROOT="$pyenv_root" pyenv versions
+}
+
+pyenv_mgr_info_plugins()
+(
+    echo '# install pyenv plugins:'
+    cd "$pyenv_root/plugins" || return 0
+    for d in */; do
+        git_remote_url "$d"
+        echo "${d%/}: $git_remote_url"
+    done
+)
+
+pyenv_mgr_install()
+{
+    pyenv_root "$1"
+    if pyenv_check "$pyenv_root"; then
+        echo >&2 "a distribution already exists in \"$pyenv_root\""
+        return 1
+    fi
+    [ -d "$1" ] && rm -Rf "$pyenv_root"
+    pyenv_mgr_install_base "$pyenv_root" &&
+        pyenv_mgr_install_plugins "$pyenv_root"
+}
+
+pyenv_mgr_install_base()
+{
+    echo "install pyenv from $PYENV_ORGA/$PYENV_REPO"
+    git_clone "$PYENV_ORGA/$PYENV_REPO" "$1"
+}
+
+pyenv_mgr_install_plugins()
+{
+    for plugin in $PYENV_PLUGINS; do
+        echo "install plugin $plugin from $PYENV_ORGA/$plugin"
+        git_clone "$PYENV_ORGA/$plugin" "$1/plugins/$plugin"
+    done
+}
+
+pyenv_mgr_update()
+{
+    pyenv_root "$1"
+    pyenv_mgr_update_base "$pyenv_root" &&
+        pyenv_mgr_update_plugins "$pyenv_root"
+}
+
+pyenv_mgr_update_base()
+(
+    echo "update pyenv"
+    cd "$1"
+    git_update
+)
+
+pyenv_mgr_update_plugins()
+(
+    [ -d "$1/plugins" ] || mkdir -p "$1/plugins"
+    for plugin in $PYENV_PLUGINS; do
+        echo "update plugin $plugin"
+        ( cd "$1/plugins/$plugin" 2>/dev/null && git_update ) ||
+            git_clone "$PYENV_ORGA/$plugin" "$1/plugins/$plugin"
+    done
+)
+
+pyenv_mgr_fupdate()
+{
+    GIT_UPDATE_FORCE=1
+
+    pyenv_mgr_update "$@"
+}
+
+pyenv_mgr_init()
+{
+    pyenv_root "$1"
+    echo "export PYENV_ROOT=\"$pyenv_root\""
+    pyenv_exec "$pyenv_root" init -
+}
+
+pyenv_mgr()
+{
+    pyenv_mgr=
+    pyenv_mgr__action=
+    while getopts :hD opt; do
+        case $opt in
+            h) pyenv_mgr_help
+               exit 0
+               ;;
+            D) set -x ;;
+        esac
+    done
+    shift $(($OPTIND - 1))
+
+    case $1 in
+        help|info|install|update|fupdate|init|"")
+            pyenv_mgr__action="pyenv_mgr_${1:-info}"
+            [ $# -gt 0 ] && shift
+            $pyenv_mgr__action "$@"
+            ;;
+        *)
+            echo >&2 "unknown action \"$1\""
+            pyenv_mgr_help
+            exit 1
+            ;;
+    esac
+}
+
+case "$0" in
+    */pyenv_mgr)
+        pyenv_mgr "$@"
+        ;;
+esac
