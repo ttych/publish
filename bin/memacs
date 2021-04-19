@@ -213,7 +213,14 @@ _memacs_edit()
         _memacs_edit__daemon="${PWD##*/}"
     fi
 
-    _emacsclient -s "$MEMACS_DIR/$_memacs_edit__daemon" -t "$@"
+    _memacs_edit__flag=
+    case " $@ " in
+        *" -c "*|*" --create-frame "*) ;;
+        *) _memacs_edit__flag="-t"
+           ;;
+    esac
+
+    _emacsclient -s "$MEMACS_DIR/$_memacs_edit__daemon" $_memacs_edit__flag "$@"
 }
 
 _memacs()
