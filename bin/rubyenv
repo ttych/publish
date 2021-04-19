@@ -1,0 +1,362 @@
+#!/bin/sh
+# -*- mode: sh -*-
+
+# set -x
+
+
+# ### RUBYENV
+RUBYENV_ROOT="${RUBYENV_ROOT:-$HOME}"
+RUBYENV_ENVS="chruby rbenv ruby-install ruby-build"
+
+
+# ### git wrappers
+
+git_remote_url()
+{
+    git_remote_url=$(cd "${1:-.}" ; git remote get-url origin)
+}
+
+git_clone()
+(
+    mkdir -p "${2%/*}"
+    git clone -q "$1" "$2"
+)
+
+git_update()
+(
+    if [ -n "$1" ]; then
+        cd "$1" || return 1
+    fi
+
+    if git rev-parse @{u} >/dev/null 2>&1; then
+        git reset --quiet --hard HEAD &&
+            git pull --quiet --no-rebase --ff-only
+    fi
+    git submodule --quiet update --recursive
+)
+
+git_clone_or_update()
+{
+    if [ -d "$2" ]; then
+        git_remote_url "$2"
+        if [ "$git_remote_url" != "$1" ]; then
+            rm -Rf "$2"
+        fi
+    fi
+
+    if [ ! -d "$2" ]; then
+        git_clone "$1" "$2"
+    else
+        git_update "$2"
+    fi
+}
+
+
+# ### rbenv
+
+RBENV_ROOT="${RBENV_ROOT:-$HOME/.rbenv}"
+RBENV_ORGA="${RBENV_ORGA:-https://github.com/rbenv}"
+RBENV_REPO="${RBENV_REPO:-rbenv}"
+RBENV_PLUGINS="${RBENV_PLUGINS:-ruby-build rbenv-vars rbenv-each rbenv-default-gems}"
+
+__rubyenv__rbenv__install_or_update()
+{
+    git_clone_or_update "${RBENV_ORGA}/${RBENV_REPO}.git" "${RBENV_ROOT}" || return 1
+    mkdir -p "${RBENV_ROOT}/plugins" || return 1
+    for __rubyenv__rbenv__install_or_update__p in $RBENV_PLUGINS; do
+        git_clone_or_update \
+            "${RBENV_ORGA}/${__rubyenv__rbenv__install_or_update__p}.git" \
+            "${RBENV_ROOT}/plugins/${__rubyenv__rbenv__install_or_update__p}" ||
+            return 1
+    done
+}
+
+__rubyenv__rbenv__status()
+{
+    [ -d "$RBENV_ROOT" ] &&
+        [ -x "$RBENV_ROOT/bin/rbenv" ] &&
+        return 0
+    return 1
+}
+
+__rubyenv__rbenv__list()
+{
+    echo "rbenv > $RBENV_ROOT > `__rubyenv__rbenv__status && echo installed || echo missing`"
+}
+
+__rubyenv__rbenv__install()
+{
+    __rubyenv__rbenv__status ||
+        __rubyenv__rbenv__install_or_update
+}
+
+__rubyenv__rbenv__update()
+{
+    __rubyenv__rbenv__install_or_update
+}
+
+__rubyenv__rbenv__init()
+{
+    __rubyenv__rbenv__status || return 0
+
+    cat <<EOF
+# rbenv
+export RBENV_ROOT="$RBENV_ROOT"
+export PATH="$RBENV_ROOT/bin:\$PATH"
+eval "\$(rbenv init -)"
+EOF
+}
+
+
+# ### ruby-build
+
+RUBY_BUILD_ROOT="${RUBY_BUILD_ROOT:-$HOME/tools/ruby-build}"
+RUBY_BUILD_ORGA="${RUBY_BUILD_ORGA:-https://github.com/rbenv}"
+RUBY_BUILD_REPO="${RUBY_BUILD_REPO:-ruby-build}"
+
+__rubyenv__ruby_build__install_or_update()
+{
+    git_clone_or_update "${RUBY_BUILD_ORGA}/${RUBY_BUILD_REPO}.git" "${RUBY_BUILD_ROOT}" || return 1
+}
+
+__rubyenv__ruby_build__status()
+{
+    [ -d "$RUBY_BUILD_ROOT" ] &&
+        [ -x "$RUBY_BUILD_ROOT/bin/ruby-build" ] &&
+        return 0
+
+    return 1
+}
+
+__rubyenv__ruby_build__list()
+{
+    echo "ruby-build > $RUBY_BUILD_ROOT > `__rubyenv__ruby_build__status && echo installed || echo missing`"
+}
+
+__rubyenv__ruby_build__install()
+{
+    __rubyenv__ruby_build__status ||
+        __rubyenv__ruby_build__install_or_update
+}
+
+__rubyenv__ruby_build__update()
+{
+    __rubyenv__ruby_build__install_or_update
+}
+
+__rubyenv__ruby_build__init()
+{
+    __rubyenv__ruby_build__status || return 0
+
+    cat <<EOF
+# ruby-build
+export PATH="$RUBY_BUILD_ROOT:\$PATH"
+EOF
+}
+
+
+# ### chruby
+
+CHRUBY_ROOT="${CHRUBY_ROOT:-$HOME/.chruby}"
+CHRUBY_ORGA="${CHRUBY_ORGA:-https://github.com/postmodern}"
+CHRUBY_REPO="${CHRUBY_REPO:-chruby}"
+
+__rubyenv__chruby__install_or_update()
+{
+    git_clone_or_update "${CHRUBY_ORGA}/${CHRUBY_REPO}.git" "${CHRUBY_ROOT}" || return 1
+}
+
+__rubyenv__chruby__status()
+{
+    [ -d "$CHRUBY_ROOT" ] &&
+        [ -r "$CHRUBY_ROOT/share/chruby/chruby.sh" ] &&
+        return 0
+
+    return 1
+}
+
+__rubyenv__chruby__list()
+{
+    echo "chruby > $CHRUBY_ROOT > `__rubyenv__chruby__status && echo installed || echo missing`"
+}
+
+__rubyenv__chruby__install()
+{
+    __rubyenv__chruby__status ||
+        __rubyenv__chruby__install_or_update
+}
+
+__rubyenv__chruby__update()
+{
+    __rubyenv__chruby__install_or_update
+}
+
+__rubyenv__chruby__init()
+{
+    __rubyenv__chruby__status || return 0
+
+    cat <<EOF
+# chruby
+CHRUBY_ROOT="$CHRUBY_ROOT"
+export CHRUBY_ROOT
+. \$CHRUBY_ROOT/share/chruby/chruby.sh
+. \$CHRUBY_ROOT/share/chruby/auto.sh
+EOF
+}
+
+
+# ### ruby-install
+
+RUBY_INSTALL_ROOT="${RUBY_INSTALL_ROOT:-$HOME/tools/ruby-install}"
+RUBY_INSTALL_ORGA="${RUBY_INSTALL_ORGA:-https://github.com/postmodern}"
+RUBY_INSTALL_REPO="${RUBY_INSTALL_REPO:-ruby-install}"
+
+__rubyenv__ruby_install__install_or_update()
+{
+    git_clone_or_update "${RUBY_INSTALL_ORGA}/${RUBY_INSTALL_REPO}.git" "${RUBY_INSTALL_ROOT}" || return 1
+}
+
+__rubyenv__ruby_install__status()
+{
+    [ -d "$RUBY_INSTALL_ROOT" ] &&
+        [ -x "$RUBY_INSTALL_ROOT/bin/ruby-install" ] &&
+        return 0
+
+    return 1
+}
+
+__rubyenv__ruby_install__list()
+{
+    echo "ruby-install > $RUBY_INSTALL_ROOT > `__rubyenv__ruby_install__status && echo installed || echo missing`"
+}
+
+__rubyenv__ruby_install__install()
+{
+    __rubyenv__ruby_install__status ||
+        __rubyenv__ruby_install__install_or_update
+}
+
+__rubyenv__ruby_install__update ()
+{
+    __rubyenv__ruby_install__install_or_update
+}
+
+__rubyenv__ruby_install__init()
+{
+    __rubyenv__ruby_install__status || return 0
+
+    cat <<EOF
+# ruby-install
+export PATH="$RUBY_INSTALL_ROOT:\$PATH"
+EOF
+}
+
+
+# ### rubyenv
+
+__rubyenv_list()
+{
+    [ $# -eq 0 ] && set -- $RUBYENV_ENVS
+
+    for __rubyenv_list__i; do
+        __rubyenv_list__i="$(echo $__rubyenv_list__i | tr - _)"
+        "__rubyenv__${__rubyenv_list__i}__list"
+    done
+}
+
+__rubyenv_install()
+{
+    [ $# -eq 0 ] && set -- $RUBYENV_ENVS_
+
+    for __rubyenv_install__i; do
+        __rubyenv_install__i="$(echo $__rubyenv_install__i | tr - _)"
+        "__rubyenv__${__rubyenv_install__i}__install"
+    done
+}
+
+__rubyenv_update()
+{
+    [ $# -eq 0 ] && set -- $RUBYENV_ENVS_
+
+    for __rubyenv_update__i; do
+        __rubyenv_update__i="$(echo $__rubyenv_update__i | tr - _)"
+        "__rubyenv__${__rubyenv_update__i}__update"
+    done
+}
+
+__rubyenv_init()
+{
+    [ $# -eq 0 ] && set -- $RUBYENV_ENVS_
+
+    for __rubyenv_init__i; do
+        __rubyenv_init__i="$(echo $__rubyenv_init__i | tr - _)"
+        "__rubyenv__${__rubyenv_init__i}__init"
+    done
+}
+
+
+__rubyenv_usage()
+{
+    cat <<EOF
+usage is:
+    rubyenv [action] [environment]
+    rubyenv [environment] [action]
+
+    with action in:
+        i|install
+        u|update
+        I|init
+        l|list
+    with environment in:
+        rbenv
+        chruby
+        ruby-build
+        ruby-install
+
+EOF
+}
+
+__rubyenv()
+{
+    if [ $# -eq 0 ]; then
+        __rubyenv_usage
+        return 1
+    fi
+
+    __rubyenv_action="$( echo $1 | tr - _)"
+    shift
+    case "$__rubyenv_action" in
+        i|install)
+            __rubyenv_install "$@" ;;
+        u|update)
+            __rubyenv_update "$@" ;;
+        I|init)
+            __rubyenv_init "$@" ;;
+        l|list)
+            __rubyenv_list "$@" ;;
+        *)
+            "__rubyenv__${__rubyenv_action}" "$@"
+            ;;
+    esac
+}
+
+
+# ### main
+
+case "$0" in
+    */rubyenv)
+        __rubyenv "$@"
+        ;;
+esac
+
+
+# ### examples
+# rubyenv ruby-build install|update
+# rubyenv ruby-install install|update
+# rubyenv rbenv install|update|init
+# rubyenv chruby install|update|init
+#
+# rubyenv i|u ruby-build
+# rubyenv i|u ruby-install
+# rubyenv i|u rbenv
+# rubyenv i|u chruby
