@@ -177,8 +177,11 @@ rbenv_mgr_update()
 rbenv_mgr_update_base()
 (
     echo "update rbenv"
-    cd "$1"
-    git_update
+    if cd "$1" >/dev/null; then
+        git_update
+    else
+        rbenv_mgr_install_base
+    fi
 )
 
 rbenv_mgr_update_plugins()

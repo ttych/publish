@@ -177,8 +177,11 @@ pyenv_mgr_update()
 pyenv_mgr_update_base()
 (
     echo "update pyenv"
-    cd "$1"
-    git_update
+    if cd "$1" >/dev/null; then
+        git_update
+    else
+        pyenv_mgr_install_base
+    fi
 )
 
 pyenv_mgr_update_plugins()
