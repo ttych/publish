@@ -170,18 +170,36 @@ _memacs_daemon()
     _emacs_daemon_create "$_memacs_daemon__name" "$_memacs_daemon__path"
 }
 
+_memacs_file_resolve_path()
+{
+    _memacs_file_resolve_path__l="${1}"
+
+    # absolute
+    case "$_memacs_file_resolve_path__l" in
+        /*) ;;
+        ../*|./*|*) _memacs_file_resolve_path__l="${PWD}/${_memacs_file_resolve_path__l#./}" ;;
+    esac
+
+    _memacs_file_resolve_path__r=
+    while [ ! -d "$_memacs_file_resolve_path__l" ]; do
+        _memacs_file_resolve_path__extract="${_memacs_file_resolve_path__l##*/}"
+        _memacs_file_resolve_path__r="${_memacs_file_resolve_path__extract}${_memacs_file_resolve_path__r:+/$_memacs_file_resolve_path__r}"
+        _memacs_file_resolve_path__l="${_memacs_file_resolve_path__l%$_memacs_file_resolve_path__extract}"
+        _memacs_file_resolve_path__l="${_memacs_file_resolve_path__l%/}"
+    done
+
+    _memacs_file_resolve_path__l=$(realpath "$_memacs_file_resolve_path__l")
+
+    _memacs_file_resolve_path="${_memacs_file_resolve_path__l}/${_memacs_file_resolve_path__r}"
+}
+
 _memacs_daemon_for_file()
 {
-    _memacs_daemon_for_file__p="${1%/*}"
-    if [ -z "$_memacs_daemon_for_file__p" ]; then
-        _memacs_daemon_for_file__p=/
-    elif [ "$_memacs_daemon_for_file__p" = "$1" ] ; then
-        _memacs_daemon_for_file__p=.
-    fi
-    _memacs_daemon_for_file__p=$(cd "$_memacs_daemon_for_file__p" && echo "$PWD")
+    _memacs_file_resolve_path "$1" || return 1
+    _memacs_daemon_for_file__p="$_memacs_file_resolve_path"
 
     _memacs_daemon_for_file__found=$(
-        sort -k 2 -r "$MEMACS_MAPPING" |
+        sort -k 2 -r "$MEMACS_MAPPING" 2>/dev/null |
             while read _memacs_daemon_for_file__r_d _memacs_daemon_for_file__r_p; do
                 case "$_memacs_daemon_for_file__p" in
                     "$_memacs_daemon_for_file__r_p"|"$_memacs_daemon_for_file__r_p"/*)
@@ -207,7 +225,10 @@ _memacs_edit()
     if [ -n "$_memacs__daemon" ]; then
         _memacs_edit__daemon="${_memacs__daemon}"
     elif [ -n "$1" ]; then
-        _memacs_daemon_for_file "$1" || return 1
+        _memacs_daemon_for_file "$1" || {
+            echo >&2 no daemon found for "$1"
+            return 1
+        }
         _memacs_edit__daemon="$_memacs_daemon_for_file"
     else
         _memacs_edit__daemon="${PWD##*/}"
