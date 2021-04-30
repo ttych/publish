@@ -1,0 +1,136 @@
+#!/bin/sh
+
+
+__wgpg_list_public_keys()
+{
+    gpg --list-keys --keyid-format LONG
+}
+
+__wgpg_list_private_keys()
+{
+    gpg --list-secret-keys --keyid-format LONG
+}
+
+__wgpg_export_public_key()
+{
+    key_id="$1"
+    if [ -z "$key_id" ]; then
+        echo >&2 "please specify 1 key identifier"
+        return 1
+    fi
+
+    output_filename="$2"
+    if [ -z "$output_filename" ]; then
+        output_filename="$1".public.gpg
+    fi
+
+    gpg --output "$output_filename" --armor --export "$key_id"
+}
+
+__wgpg_export_private_key()
+{
+    key_id="$1"
+    if [ -z "$key_id" ]; then
+        echo >&2 "please specify 1 key identifier to export"
+        return 1
+    fi
+
+    output_filename="$2"
+    if [ -z "$output_filename" ]; then
+        output_filename="$1".private.gpg
+    fi
+
+    gpg --output "$output_filename" --armor --export-secret-key --export-options export-backup "$key_id"
+}
+
+__wgpg_import_public_key()
+{
+    if [ -z "$1" ]; then
+        echo >&2 "please specify 1 key identifier to import"
+        return 1
+    fi
+
+    gpg --import "$1"
+}
+
+__wgpg_import_private_key()
+{
+    if [ -z "$1" ]; then
+        echo >&2 "please specify 1 key identifier to import"
+        return 1
+    fi
+
+    gpg --allow-secret-key-import --import "$1"
+}
+
+__wgpg_export_trust_db()
+{
+    output_filename="$1"
+    if [ -z "$output_filename" ]; then
+        output_filename=trust-db.backup.gpg
+    fi
+
+    gpg --export-ownertrust > "$output_filename"
+}
+
+__wgpg_import_trust_db()
+{
+    if [ -z "$1" ]; then
+        echo >&2 "specify trust_db file to import"
+        return 1
+    fi
+
+    rm "$HOME/.gnupg/trustdb.gpg"
+    gpg --import-ownertrust < "$1"
+}
+
+
+__wgpg_usage()
+{
+    echo "..."
+}
+
+
+__wgpg()
+{
+    __wgpg_action="$1"
+    [ $# -gt 0 ] && shift
+
+    case "$__wgpg_action" in
+        list-public|list-publics|lp)
+            __wgpg_list_public_keys "$@"
+            ;;
+        list-private|list-privates|list-secret|list-secrets|lP|ls)
+            __wgpg_list_private_keys "$@"
+            ;;
+        export-public|ep)
+            __wgpg_export_public_key "$@"
+            ;;
+        export-private|export-secret|eP|es)
+            __wgpg_export_private_key "$@"
+            ;;
+        import-public|ip)
+            __wgpg_import_public_key "$@"
+            ;;
+        import-private|import-secret|iP|is)
+            __wgpg_import_private_key "$@"
+            ;;
+        export-trust-db|etdb)
+            __wgpg_export_trust_db "$@"
+            ;;
+        import-trust-db|itdb)
+            __wgpg_import_trust_db "$@"
+            ;;
+        --help|-h)
+            __wgpg_usage
+            ;;
+        *)
+            echo >&2 "unknow parameter"
+            __wgpg_usage
+            return 1
+            ;;
+    esac
+}
+
+
+__wgpg "$@"
