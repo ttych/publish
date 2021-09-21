@@ -23,7 +23,9 @@ wpass()
     done
     shift $(($OPTIND - 1))
 
+    # set -x
     PASSWORD_STORE_DIR="$wpass__store" pass "$@"
+    # set +x
 }
 
 ## Completion
