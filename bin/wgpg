@@ -88,6 +88,11 @@ __wgpg_import_trust_db()
     gpg --import-ownertrust < "$1"
 }
 
+__wgpg_genrate_key_full()
+{
+    gpg --full-gen-key
+}
+
 
 __wgpg_usage()
 {
@@ -103,6 +108,7 @@ with action in:
      import-private|import-secret|iP|is   <file>
      export-trust-db|etdb
      import-trust-db|itdb   <file>
+     generate-key|gk
 EOF
 }
 
@@ -136,6 +142,9 @@ __wgpg()
             ;;
         import-trust-db|itdb)
             __wgpg_import_trust_db "$@"
+            ;;
+        generate-key|gk)
+            __wgpg_genrate_key_full "$@"
             ;;
         --help|-h)
             __wgpg_usage
