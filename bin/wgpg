@@ -93,6 +93,17 @@ __wgpg_genrate_key_full()
     gpg --full-gen-key
 }
 
+__wgpg_examples()
+{
+    cat <<EOF
+# encrypt / decrypt (symmetric)
+- gpg -c <file>
+- gpg -d <file>.gpg
+# encrypt / decrypt (asymmetric)
+- gpg -e -u "<sender_id>" -r "<receiver_id>" <file>
+- gpg -d <file>.gpg
+EOF
+}
 
 __wgpg_usage()
 {
@@ -109,6 +120,7 @@ with action in:
      export-trust-db|etdb
      import-trust-db|itdb   <file>
      generate-key|gk
+     examples|ex
 EOF
 }
 
@@ -145,6 +157,9 @@ __wgpg()
             ;;
         generate-key|gk)
             __wgpg_genrate_key_full "$@"
+            ;;
+        examples|ex)
+            __wgpg_examples "$@"
             ;;
         --help|-h)
             __wgpg_usage
