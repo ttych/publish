@@ -1,0 +1,11 @@
+#!/bin/sh
+
+HOME_CACHE="${HOME_CACHE:-$HOME/.cache}"
+
+HOME_CACHE_DIRS="abrt bower go-build jedi pip pipenv rubocop_cache"
+for dir in $HOME_CACHE_DIRS; do
+    if [ -w "$HOME_CACHE/$dir" ]; then
+        echo >&2 "cleaning cache $HOME_CACHE/$dir ..."
+        rm -Rf "$HOME_CACHE/$dir"
+    fi
+done
