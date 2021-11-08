@@ -5,7 +5,7 @@ clean_python_cache()
     [ -d "$1" ] || return 1
 
     echo "cleaning python cache: $d ..."
-    find "$1" -name '__pycache__' -o -name '*.pyc' -o -name -o -name '.mypy_cache' -exec rm -Rf {} \; 2>/dev/null
+    find "$1" -name '__pycache__' -o -name '*.pyc' -o -name '.mypy_cache' -exec rm -Rf {} \; 2>/dev/null
 }
 
 for d in "${@:-$PWD}"; do
