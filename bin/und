@@ -1,0 +1,23 @@
+#!/bin/sh
+
+und()
+{
+    und__target="${1}"
+    [ -z "$und__target" ] && return 1
+
+    while : ; do
+        und__target_="${und__target%/}"
+        [ "$und__target_" = "$und__target" ] && break
+        und__target="$und__target_"
+    done
+    und__file="${und__target##*/}"
+    und__dir="${und__target%$und__file}"
+
+    mv -i -- "${und__target}" "${und__dir}_${und__file}"
+}
+
+status=0
+for target; do
+    und "$target" || status=1
+done
+exit $status
