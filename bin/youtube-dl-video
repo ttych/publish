@@ -1,0 +1,13 @@
+#!/bin/sh
+
+for link; do
+    youtube-dl \
+        --ignore-config \
+        --no-warnings \
+        --all-subs \
+        --no-playlist \
+        -- newline \
+        "$link" \
+        -o '/home/thomas/Downloads/%(title)s.%(ext)s' \
+        -f 'mp4[height=1080]+m4a/bestvideo[height<=1080]+bestaudio' \
+        | stdbuf -o0 grep -oP '^\\[download\\].*?\\K([0-9]+)'
