@@ -1,11 +1,13 @@
 #!/bin/sh
 
 DOWNLOAD_DIR="${DOWNLOAD_DIR:-$HOME/Downloads/}"
+AUDIO_FORMAT="${AUDIO_FORMAT:-mp3}"
 
 for link; do
     youtube-dl \
-        --all-subs \
+        --extract-audio \
+        --audio-format $AUDIO_FORMAT \
+        --audio-quality 0 \
         -o "$DOWNLOAD_DIR/%(title)s.%(ext)s" \
-        -f 'mp4[height=1080]+m4a/bestvideo[height<=1080]+bestaudio' \
         "$link"
 done
