@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# DEFAULT_APG_ARGS="-M NCL -a 0 -s -m 8 -x 12 -t"
+DEFAULT_APG_ARGS="-c /dev/urandom -m 8 -x 14 -M SNCL -t"
+
+if [ -z "$*" ]; then
+    set -- ${APG_ARGS:-$DEFAULT_APG_ARGS}
+fi
+
+apg "$@"
