@@ -51,11 +51,12 @@ git_update_force()
     git submodule --quiet update --recursive
 }
 
-RBENV_ORGA="${RBENV_ORGA:-https://github.com/rbenv}"
+RBENV_HOSTING="${RBENV_HOSTING:-https://github.com}"
+RBENV_ORGA="${RBENV_ORGA:-rbenv}"
 RBENV_REPO="${RBENV_REPO:-rbenv}"
-RBENV_PLUGINS="${RBENV_PLUGINS:-ruby-build rbenv-each rbenv-vars rbenv-default-gems rbenv-update}"
+RBENV_PLUGINS="${RBENV_PLUGINS:-ruby-build rbenv-each rbenv-vars rbenv-default-gems}"
 RBENV_PLUGINS="${RBENV_PLUGINS} ${RBENV_PLUGINS_LOCAL}"
-RBENV_PLUGINS_ADDITIONAL="${RBENV_PLUGINS_ADDITIONAL:-rbenv-aliases rbenv-ctags rbenv-use}"
+RBENV_PLUGINS_ADDITIONAL="${RBENV_PLUGINS_ADDITIONAL:-rbenv-aliases rbenv-ctags rbenv-use rkh/rbenv-update}"
 
 rbenv_mgr_help()
 {
@@ -100,6 +101,33 @@ rbenv_root()
     do
         rbenv_check "$rbenv_root" && break
     done
+}
+
+rbenv_plugin()
+{
+    rbenv_plugin__name=
+    rbenv_plugin__url=
+    case "$1" in
+        "")
+            echo >&2 "plugin: empty input specified"
+            return 1
+            ;;
+        http*://*/*/*/*|*@*:*/*/*)
+            echo >&2 "plugin: wrong pattern \"$1\""
+            return 2
+            ;;
+        http*://*/*/*|*@*:*/*)
+            rbenv_plugin__url="$1"
+            ;;
+        */*)
+            rbenv_plugin__url="${RBENV_HOSTING}/$1"
+            ;;
+        *)
+            rbenv_plugin__url="${RBENV_HOSTING}/${RBENV_ORGA}/$1"
+            ;;
+    esac
+    rbenv_plugin__name="${1##*/}"
+    rbenv_plugin__name="${rbenv_plugin__name%.git}"
 }
 
 rbenv_mgr_info()
@@ -156,15 +184,17 @@ rbenv_mgr_install()
 
 rbenv_mgr_install_base()
 {
-    echo "install rbenv from $RBENV_ORGA/$RBENV_REPO"
-    git_clone "$RBENV_ORGA/$RBENV_REPO" "$1"
+    echo "install rbenv from $RBENV_HOSTING/$RBENV_ORGA/$RBENV_REPO"
+    git_clone "$RBENV_HOSTING/$RBENV_ORGA/$RBENV_REPO" "$1"
 }
 
 rbenv_mgr_install_plugins()
 {
+    [ -d "$1/plugins" ] || mkdir -p "$1/plugins"
     for plugin in $RBENV_PLUGINS; do
-        echo "install plugin $plugin from $RBENV_ORGA/$plugin"
-        git_clone "$RBENV_ORGA/$plugin" "$1/plugins/$plugin"
+        rbenv_plugin "$plugin" || continue
+        echo "install plugin $rbenv_plugin__name from $rbenv_plugin__url"
+        git_clone "$rbenv_plugin__url" "$1/plugins/$rbenv_plugin__name"
     done
 }
 
@@ -189,9 +219,10 @@ rbenv_mgr_update_plugins()
 (
     [ -d "$1/plugins" ] || mkdir -p "$1/plugins"
     for plugin in $RBENV_PLUGINS; do
-        echo "update plugin $plugin"
-        ( cd "$1/plugins/$plugin" 2>/dev/null && git_update ) ||
-            git_clone "$RBENV_ORGA/$plugin" "$1/plugins/$plugin"
+        rbenv_plugin "$plugin" || continue
+        echo "update plugin $rbenv_plugin__name"
+        ( cd "$1/plugins/$rbenv_plugin__name" 2>/dev/null && git_update ) ||
+            git_clone "$rbenv_plugin__url" "$1/plugins/$rbenv_plugin__name"
     done
 )
 
