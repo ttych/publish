@@ -53,8 +53,9 @@ git_update_force()
 
 RBENV_ORGA="${RBENV_ORGA:-https://github.com/rbenv}"
 RBENV_REPO="${RBENV_REPO:-rbenv}"
-RBENV_PLUGINS="${RBENV_PLUGINS:-ruby-build rbenv-vars rbenv-each rbenv-default-gems}"
-
+RBENV_PLUGINS="${RBENV_PLUGINS:-ruby-build rbenv-each rbenv-vars rbenv-default-gems rbenv-update}"
+RBENV_PLUGINS="${RBENV_PLUGINS} ${RBENV_PLUGINS_LOCAL}"
+RBENV_PLUGINS_ADDITIONAL="${RBENV_PLUGINS_ADDITIONAL:-rbenv-aliases rbenv-ctags rbenv-use}"
 
 rbenv_mgr_help()
 {
