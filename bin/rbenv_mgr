@@ -3,6 +3,10 @@
 
 # set -x
 
+is_in_git()
+{
+    git rev-parse --git-dir >/dev/null 2>/dev/null || return 1
+}
 
 git_remote_url()
 {
@@ -26,6 +30,8 @@ git_update()
 
 git_update_simple()
 {
+    is_in_git || return 1
+
     if git rev-parse @{u} >/dev/null 2>&1; then
         git reset --quiet --hard HEAD &&
             git pull --quiet --no-rebase --ff-only
@@ -35,6 +41,8 @@ git_update_simple()
 
 git_update_force()
 {
+    is_in_git || return 1
+
     if git rev-parse @{u} >/dev/null 2>&1; then
         git_branch_cur=`git rev-parse --abbrev-ref HEAD`
         git_rem=`git branch --format '%(upstream:remotename)'`
@@ -217,12 +225,25 @@ rbenv_mgr_update_base()
 
 rbenv_mgr_update_plugins()
 (
-    [ -d "$1/plugins" ] || mkdir -p "$1/plugins"
+    [ -d "$1/plugins" ] || mkdir -p "$1/plugins" || return 1
+    rbenv_mgr_update_plugins__processed=:
     for plugin in $RBENV_PLUGINS; do
         rbenv_plugin "$plugin" || continue
         echo "update plugin $rbenv_plugin__name"
         ( cd "$1/plugins/$rbenv_plugin__name" 2>/dev/null && git_update ) ||
             git_clone "$rbenv_plugin__url" "$1/plugins/$rbenv_plugin__name"
+        rbenv_mgr_update_plugins__processed="${rbenv_mgr_update_plugins__processed}${rbenv_plugin__name}:"
+    done
+    for dir in "$1/plugins/"*/; do
+        dir="${dir%/}"
+        dir_name="${dir##*/}"
+        case "$rbenv_mgr_update_plugins__processed" in
+            *:"$dir_name":*)
+                continue
+                ;;
+        esac
+        echo "update plugin $dir_name"
+        cd "$dir" 2>/dev/null && git_update
     done
 )
 
