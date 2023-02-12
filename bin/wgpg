@@ -88,14 +88,95 @@ __wgpg_import_trust_db()
     gpg --import-ownertrust < "$1"
 }
 
-__wgpg_genrate_key_full()
+__wgpg_generate_key_full()
 {
-    gpg --full-gen-key
+    gpg --full-generate-key
+}
+
+__wgpg_generate_key_batch()
+{
+    __wgpg_generate_key_expert__args="expected args: <name> <mail> <password> <expire>"
+
+    __wgpg_generate_key_expert__name="$1"
+    __wgpg_generate_key_expert__mail="$2"
+    __wgpg_generate_key_expert__password="$3"
+    __wgpg_generate_key_expert__expire="${4:-10y}"
+
+    if [ -z "$__wgpg_generate_key_expert__name" ] ||
+           [ -z "$__wgpg_generate_key_expert__mail" ] ||
+           [ -z "$__wgpg_generate_key_expert__password" ]; then
+        echo >&2 "missing args !"
+        echo >&2 "$__wgpg_generate_key_expert__args"
+        return 2
+    fi
+
+    cat >newkey <<EOF
+%echo Generating a RSA key
+Key-Type: RSA
+Key-Length: 8192
+Key-Usage: cert
+Name-Real: master
+#Name-Comment:
+Name-Email: master@keyring
+Expire-Date: 10y
+Passphrase: tmppassphrasepleaseedit
+# Do a commit here, so that we can later print "done"
+%commit
+%echo done
+EOF
+
+    gpg --batch --gen-key --enable-large-rsa -a newkey
+    rm -f newkey
+}
+
+
+__wgpg_init_keyring()
+{
+    __wgpg_init_keyring__homedir="${1:-$GNUPGHOME}"
+    __wgpg_init_keyring__homedir="${__wgpg_init_keyring__homedir:-$HOME/.gnupg}"
+
+    export GNUPGHOME="$__wgpg_init_keyring__homedir"
+
+    mkdir -p "$__wgpg_init_keyring__homedir" &&
+        gpg --homedir "$__wgpg_init_keyring__homedir" -k &&
+        gpgconf --kill gpg-agent &&
+        unset GPG_AGENT_INFO &&
+        mkdir -p "${HOME}/.gnupg" &&
+        chmod 0700 "${HOME}/.gnupg" &&
+        cat > "$__wgpg_init_keyring__homedir/S.gpg-agent" <<EOF
+%Assuan%
+socket=${HOME}/.gnupg/S.gpg-agent-keyring
+EOF
+
+    [ -r "$__wgpg_init_keyring__homedir/gpg.conf" ] ||
+        cat <<EOF
+no-greeting
+keyserver hkp://keys.gnupg.net
+use-agent
+
+personal-cipher-preferences AES256 AES192 AES
+personal-digest-preferences SHA512 SHA384 SHA256
+personal-compress-preferences ZLIB BZIP2 ZIP Uncompressed
+# default-preference-list SHA512 SHA384 SHA256 SHA224 AES256 AES192 AES CAST5 ZLIB BZIP2 ZIP Uncompressed
+default-preference-list SHA512 SHA384 SHA256 AES256 AES192 AES ZLIB BZIP2 ZIP Uncompressed
+cert-digest-algo SHA512
+s2k-digest-algo SHA512
+s2k-cipher-algo AES256
+charset utf-8
+keyid-format 0xlong
+with-fingerprint
+no-symkey-cache
+EOF
 }
 
 __wgpg_examples()
 {
     cat <<EOF
+# notes
+  sec => 'SECret key'
+  ssb => 'Secret SuBkey'
+  pub => 'PUBlic key'
+  sub => 'public SUBkey'
 # encrypt / decrypt (symmetric)
 - gpg -c <file>
 - gpg -d <file>.gpg
@@ -120,13 +201,32 @@ with action in:
      export-trust-db|etdb
      import-trust-db|itdb   <file>
      generate-key|gk
+     generate-key-b|gkb <name> <mail> <passw> <expire>
      examples|ex
+     init-keyring|ik
 EOF
 }
 
 
 __wgpg()
 {
+    while getopts :hDH: opt; do
+        case $opt in
+            H)
+                GNUPGHOME="$OPTARG"
+                export GNUPGHOME
+                ;;
+            D)
+                set -x
+                ;;
+            h)
+                __wgpg_usage
+                return 0
+                ;;
+        esac
+    done
+    shift $(($OPTIND - 1))
+
     __wgpg_action="$1"
     [ $# -gt 0 ] && shift
 
@@ -156,16 +256,19 @@ __wgpg()
             __wgpg_import_trust_db "$@"
             ;;
         generate-key|gk)
-            __wgpg_genrate_key_full "$@"
+            __wgpg_generate_key_full "$@"
+            ;;
+        generate-key-b|gkb)
+            __wgpg_generate_key_batch "$@"
             ;;
         examples|ex)
             __wgpg_examples "$@"
             ;;
-        --help|-h)
-            __wgpg_usage
+        init-keyring|ik)
+            __wgpg_init_keyring "$@"
             ;;
         *)
-            echo >&2 "unknow parameter"
+            echo >&2 "unknow action \"$__wgpg_action\""
             __wgpg_usage
             return 1
             ;;

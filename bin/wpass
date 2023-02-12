@@ -28,6 +28,10 @@ wpass()
     # set +x
 }
 
+
+## From: https://www.gilesorr.com/blog/shared-passwordstore.html
+# wpass () { PASSWORD_STORE_DIR=${HOME}/.wpasswordstore pass "$@" ; }
+#
 ## Completion
 #
 ## bash completion
