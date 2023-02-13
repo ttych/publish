@@ -1,0 +1,11 @@
+#!/bin/sh
+
+entropy=$(cat /proc/sys/kernel/random/entropy_avail)
+
+if [ $entropy -lt 3000 ]; then
+    entropy_status="not enough"
+else
+    entropy_status="enough"
+fi
+
+echo "entropy $entropy ($entropy_status)"
