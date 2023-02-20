@@ -514,7 +514,8 @@ gpg_keyring__usage()
 $SCRIPT_NAME <options> <command> <parameters>
 
 with options in
-     h : help
+     h                 : help
+     d <keyring_path>  : change keyring path
 
 with command in
      usage
