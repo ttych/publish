@@ -78,7 +78,7 @@ EOF
 
 gpg_keyring__reset_agent()
 {
-    gpgconf --kill gpg-agent
+    gpgconf --kill gpg-agent || gpg-connect-agent reloadagent /bye 2>/dev/null
     unset GPG_AGENT_INFO
 }
 
@@ -276,7 +276,8 @@ gpg_keyring__list_signatures()
 {
     gpg_keyring__context || return 1
 
-    gpg --list-signatures "$@"
+    # gpg --list-signatures "$@"
+    gpg --list-sigs "$@"
 }
 
 gpg_keyring__check_signatures()
