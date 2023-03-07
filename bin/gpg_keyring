@@ -24,20 +24,20 @@ gpg_keyring__vars()
     if [ -z "$GPG_KEYRING" ] || [ "$GPG_KEYRING" = "$HOME" ]; then
         GPG_KEYRING_NAME=
         GPG_KEYRING_SOCKET=
-        GPG_KEYRING_CONF="$HOME/.gnupg/gpg.conf"
-        GPG_KEYRING_EXPORT="$HOME/.gnupg/export/"
-        GPG_KEYRING_TRUSTDB="$HOME/.gnupg/trustdb.gpg"
+        GPG_KEYRING_CONF_DIR="$HOME/.gnupg"
 
         unset GNUPGHOME
     else
         GPG_KEYRING_NAME="${GPG_KEYRING##*/}"
         GPG_KEYRING_SOCKET="${GPG_KEYRING}/S.gpg-agent"
-        GPG_KEYRING_CONF="${GPG_KEYRING}/gpg.conf"
-        GPG_KEYRING_EXPORT="$GPG_KEYRING/export/"
-        GPG_KEYRING_TRUSTDB="$GPG_KEYRING/trustdb.gpg"
+        GPG_KEYRING_CONF_DIR="${GPG_KEYRING}"
 
         export GNUPGHOME="$GPG_KEYRING"
     fi
+
+    GPG_KEYRING_CONF="${GPG_KEYRING_CONF_DIR}/gpg.conf"
+    GPG_KEYRING_EXPORT="${GPG_KEYRING_CONF_DIR}/export/"
+    GPG_KEYRING_TRUSTDB="${GPG_KEYRING_CONF_DIR}/trustdb.gpg"
 }
 
 
@@ -61,7 +61,8 @@ no-symkey-cache
 EOF
     fi
 
-    mkdir -p "$GPG_KEYRING_EXPORT"
+    mkdir -p "$GPG_KEYRING_EXPORT" &&
+        chmod 0700 "$GPG_KEYRING_CONF"
 }
 
 gpg_keyring__init_socket()
