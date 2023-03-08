@@ -1,0 +1,58 @@
+#!/bin/sh
+
+SCRIPT_NAME="${0##*/}"
+SCRIPT_RPATH="${0%$SCRIPT_NAME}"
+SCRIPT_PATH=`cd "${SCRIPT_RPATH:-.}" && pwd`
+
+
+usage()
+{
+    cat <<EOF
+usage is $SCRIPT_NAME [options] <gpg_id>
+
+with options:
+     -l  :  local config, in the repository
+     -g  :  global config (default)
+     -s  :  system config
+EOF
+}
+
+GIT_GPG_SIGN_LOCATION='--global'
+
+OPTIND=1
+while getopts :lgs opt; do
+    case $opt in
+        l) GIT_GPG_SIGN_LOCATION="--local" ;;
+        g) GIT_GPG_SIGN_LOCATION="--global" ;;
+        s) GIT_GPG_SIGN_LOCATION="--system" ;;
+    esac
+done
+shift $(($OPTIND - 1))
+
+if [ $# -ne 1 ]; then
+    usage
+    exit 1
+fi
+GIT_GPG_SIGN_GPGID="$1"
+
+in_git()
+{
+    in_git=$(git rev-parse --absolute-git-dir 2>/dev/null)
+}
+
+if [ "$GIT_GPG_SIGN_LOCATION" = "--local" ] && !in_git; then
+    echo >&2 "not inside a git repository, cannot use --local"
+    exit 1
+fi
+
+git config $GIT_GPG_SIGN_LOCATION --unset gpg.format &&
+    git config $GIT_GPG_SIGN_LOCATION user.signingkey "$GIT_GPG_SIGN_GPGID" &&
+    git config $GIT_GPG_SIGN_LOCATION commit.gpgsign true
+
+
+cat <<EOF
+Import plublic key into github / gitlab:
+- export public key $GIT_GPG_SIGN_GPGID
+  gpg --armor --export $GIT_GPG_SIGN_GPGID
+- import into github / gitlab
+EOF

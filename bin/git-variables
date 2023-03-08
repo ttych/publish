@@ -1,0 +1,45 @@
+#!/bin/sh
+
+GIT_V="absolute_git_dir \
+    is_bare_repository \
+    is_inside_git_dir \
+    is_inside_work_tree \
+    is_bare_repository \
+    is_shallow_repository \
+"
+
+_git_v()
+{
+    _git_v="$(git rev-parse \
+        --absolute-git-dir \
+        --is-bare-repository \
+        --is-inside-git-dir \
+        --is-inside-work-tree \
+        --is-bare-repository \
+        --is-shallow-repository \
+             2>/dev/null)"
+    _git_v__status=$?
+    if [ $_git_v__status -ne 0 ]; then
+        return $_git_v__status
+    fi
+
+    set -- $GIT_V
+    _git_v__IFS="$IFS"
+    IFS='
+'
+    for _git_v__entry in $(echo "$_git_v"); do
+        eval "_git_$1"="\"$_git_v__entry\""
+        shift
+    done
+    IFS="$_git_v__IFS"
+}
+
+git_v()
+{
+    _git_v "$@" || return 1
+    for git_v in $GIT_V; do
+        eval echo "_git_$git_v=\"\$_git_$git_v\""
+    done
+}
+
+git_v
