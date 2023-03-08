@@ -59,10 +59,11 @@ keyid-format 0xlong
 with-fingerprint
 no-symkey-cache
 EOF
+        chmod 0600 "$GPG_KEYRING_CONF"
     fi
 
     mkdir -p "$GPG_KEYRING_EXPORT" &&
-        chmod 0700 "$GPG_KEYRING_CONF"
+        chmod 0700 "$GPG_KEYRING_CONF_DIR"
 }
 
 gpg_keyring__init_socket()
