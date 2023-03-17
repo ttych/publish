@@ -1,10 +1,12 @@
 #!/bin/sh
 
 # DEFAULT_APG_ARGS="-M NCL -a 0 -s -m 8 -x 12 -t"
-DEFAULT_APG_ARGS="-c /dev/urandom -m 8 -x 14 -M SNCL -t"
+DEFAULT_APG_ARGS="-c /dev/urandom -n 7 -m 10 -x 16 -M SNCL -t"
 
-if [ -z "$*" ]; then
-    set -- ${APG_ARGS:-$DEFAULT_APG_ARGS}
-fi
+# if [ -z "$*" ]; then
+#     set -- ${APG_ARGS:-$DEFAULT_APG_ARGS}
+# fi
+
+set -- $DEFAULT_APG_ARGS "$@"
 
 apg "$@"
