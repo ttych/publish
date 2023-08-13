@@ -1,0 +1,215 @@
+#!/bin/sh
+
+SCRIPT_NAME="${0##*/}"
+SCRIPT_RPATH="${0%$SCRIPT_NAME}"
+SCRIPT_PATH=`cd "${SCRIPT_RPATH:-.}" && pwd`
+
+ME=`whoami`
+TMPDIR="${TMPDIR:-/tmp}"
+
+VERBOSE=
+verbose()
+{
+    [ -n "$VERBOSE" ]
+}
+
+echo2()
+{
+    echo >&2 "$@"
+}
+
+########## env
+HOMEBKP_CONF="${HOMEBKP_CONF:-$HOME/.homebkp}"
+
+[ -r "$HOMEBKP_CONF" ] && . "$HOMEBKP_CONF"
+
+HOMEBKP_HOME="${HOMEBKP_HOME:-$HOME}"
+HOMEBKP_SERVER="${HOMEBKP_SERVER:-homebkp:/backup/$HOMEBKP_HOME}"
+HOMEBKP_SYNCLIST_SEP="${HOMEBKP_SYNCLIST_SEP:-;}"
+HOMEBKP_SYNCLIST_DEFAULT="etc;Desktop;Documents;.dotfiles;.zprofile;.zshrc;.bashrc;.profile;.emacs.d;.tmux.conf;.tmux;.screenrc;.ssh;.utilsh;org;.gitconfig;.gemrc;.irbrc;.password-store;.password-store_common;.gnupg;.hgrc;.Xresources;.xbindkeysrc;.mozilla;.config;"
+HOMEBKP_SYNCLIST="${HOMEBKP_SYNCLIST:-$HOMEBKP_SYNCLIST_DEFAULT}"
+HOMEBKP_SYNCLIST_TMP="${TMPDIR}/${SCRIPT_NAME}.$(id -u).$$.synclist"
+# HOMEBKP_SYNCLIST_FILTERS="${HOMEBKP_SYNCLIST_FILTERS:--f'- *webm' -f'- *mp4' -f'- *mkv' -f'- *mp3'}"
+HOMEBKP_SYNCLIST_EXCLUDES="*.webm *.vtt *.mp4 *.mkv *.avi *.mp3"
+
+
+########## run
+run()
+{
+    if verbose; then
+        echo "exec>" "$@"
+    fi
+    "$@"
+}
+
+
+########## rsync
+homebkp_sync()
+{
+    homebkp_sync__mode="$1"
+    homebkp_sync__synclist="$2"
+    homebkp_sync__extra=
+
+    case $homebkp_sync__mode in
+        save)
+            homebkp_sync__from="$HOMEBKP_HOME"
+            homebkp_sync__to="$HOMEBKP_SERVER"
+            ;;
+        restore)
+            homebkp_sync__from="$HOMEBKP_SERVER"
+            homebkp_sync__to="$HOMEBKP_HOME"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
+    [ -z "$homebkp_sync__from" ] && echo2 "homebkp_sync source can not be empty" && return 1
+    [ -z "$homebkp_sync__to" ] && echo2 "homebkp_sync target can not be empty" && return 1
+    [ -z "$homebkp_sync__synclist" ] && echo2 "synclist can not be empty" && return 1
+
+    homebkp_sync__excludes=
+    for homebkp_sync__p in $HOMEBKP_SYNCLIST_EXCLUDES; do
+        homebkp_sync__excludes="$homebkp_sync__excludes --exclude=$homebkp_sync__p"
+    done
+
+    run \
+        rsync -av ${HOMEBKP_FORCE:+--delete} --force -e "ssh -l $ME" -r \
+        ${HOMEBKP_DRYRUN:+--dry-run} \
+        --files-from="$homebkp_sync__synclist" --ignore-missing-args \
+        $homebkp_sync__excludes \
+        "$homebkp_sync__from" "$homebkp_sync__to"
+}
+
+
+########## synclist
+homebkp_synclist()
+{
+    if [ -n "$HOMEBKP_SYNCLIST_FILE" ] && [ -r "$HOMEBKP_SYNCLIST_FILE" ]; then
+        homebkp_synclist="$HOMEBKP_SYNCLIST_FILE"
+    else
+        homebkp_synclist="$HOMEBKP_SYNCLIST_TMP"
+        echo "$HOMEBKP_SYNCLIST" | tr "$HOMEBKP_SYNCLIST_SEP" "\n" > "$homebkp_synclist"
+    fi
+}
+
+homebkp_synclist_clean()
+{
+    rm -f "$HOMEBKP_SYNCLIST_TMP"
+}
+
+
+########## lock
+LOCK="${TMPDIR}/${SCRIPT_NAME}.$(id -u).lock"
+
+lock_do()
+{
+    lock || return 1
+    "$@"
+    lock_do__status=$?
+    lock_clean
+    return $lock_do__status
+}
+
+lock()
+{
+    lock__process=
+    if [ -r $LOCK ] ; then
+        lock__process=$(cat "$LOCK")
+    fi
+
+    if kill -0 "$lock__process" >/dev/null 2>&1 ; then
+        echo "process $lock__process is already running (locking)."
+        return 1
+    else
+        lock_clean
+        echo $$ > "$LOCK"
+    fi
+}
+
+lock_clean()
+{
+    rm -f "$LOCK"
+}
+
+
+########## homebkp_save
+homebkp_save()
+{
+    homebkp_synclist || return 1
+
+    homebkp_sync save "$homebkp_synclist"
+    homebkp_save__status=$?
+
+    homebkp_synclist_clean
+
+    return $homebkp_save__status
+}
+
+
+########## homebkp_restore
+homebkp_restore()
+{
+    homebkp_synclist || return 1
+
+    homebkp_sync restore "$homebkp_synclist"
+    homebkp_restore__status=$?
+
+    homebkp_synclist_clean
+
+    return $homebkp_restore__status
+}
+
+
+########## main
+homebkp_usage()
+{
+    cat >&2 <<EOF
+usage is:
+    $0 [-hxv] <command>
+
+with options in:
+    -h  : help
+    -x  : debug
+    -v  : verbose
+    -f  : force delete
+    -n  : dry-run
+
+with command in:
+    save     : save $HOME to $HOMEBKP_SERVER
+    restore  : restore from $HOMEBKP_SERVER to $HOME
+
+with conf in:
+    $HOMEBKP_CONF
+EOF
+}
+
+homebkp()
+{
+    OPTIND=1
+    while getopts :hxvfn opt; do
+        case $opt in
+            h) homebkp_usage; return 0 ;;
+            x) set -x ;;
+            v) VERBOSE=yes ;;
+            f) HOMEBKP_FORCE=yes ;;
+            n) HOMEBKP_DRYRUN=yes ;;
+        esac
+    done
+    shift $(($OPTIND - 1))
+
+    [ $# -eq 0 ] && homebkp_usage && return 0
+
+    homebkp__action="$(echo $1 | tr '-' '_')" ; shift
+    case $homebkp__action in
+        help) homebkp_usage ; return 0 ;;
+        save|restore) "homebkp_${homebkp__action}" "$@" ;;
+        *) homebkp_usage ; return 1 ;;
+    esac
+}
+
+case $SCRIPT_NAME in
+    homebkp|homebkp.sh)
+        homebkp "$@"
+        ;;
+esac
