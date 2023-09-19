@@ -9,7 +9,8 @@ TEXLIVE_TMPDIR="${TMPDIR:-/tmp}/texlive"
 TEXLIVE_INSTALLER="install-tl"
 TEXLIVE_INSTALLER_ARCHIVE="${TEXLIVE_INSTALLER}.zip"
 TEXLIVE_INSTALLER_URL="${TEXLIVE_INSTALLER_URL:-http://mirror.ctan.org/systems/texlive/tlnet/$TEXLIVE_INSTALLER_ARCHIVE}"
-
+TEXLIVE_UPDATER_SCRIPT="update-tlmgr-latest.sh"
+TEXLIVE_UPDATER_URL="${TEXLIVE_UPDATER_URL:-https://mirror.ctan.org/systems/texlive/tlnet/$TEXLIVE_UPDATER_SCRIPT}"
 
 
 ###
@@ -141,35 +142,26 @@ texlive_install_dist_ext()
 
 texlive_update_dist()
 {
-    :
-    # FIXME: finalize update
-    # texlive_update()
-# {
-#     texlive_status s || {
-#         echo >&2 "TeXlive not installed !"
-#         return 1
-#     }
+    cd "$TEXLIVE_DIST_DIR" || return 1
 
-#     exit 1
-# }
-    # # sudo env PATH="$PATH" tlmgr update --self --all
+    curl -s -S -L "$TEXLIVE_UPDATER_URL" -o "$TEXLIVE_DIST_DIR/$TEXLIVE_UPDATER_SCRIPT" &&
+        chmod +x "$TEXLIVE_DIST_DIR/$TEXLIVE_UPDATER_SCRIPT" ||
+            return 1
 
+    # Download the latest update-tlmgr-latest.sh and run it
+    "$TEXLIVE_DIST_DIR/$TEXLIVE_UPDATER_SCRIPT" -- --upgrade
 
-    # FIXME: upgrade
+    # Use specific repo
+    # tlmgr option repository yourrepo || return 1
 
-# https://mirror.ctan.org/systems/texlive/tlnet/update-tlmgr-latest.sh
-# sh update-tlmgr-latest.sh -- --upgrade
-# https://tug.org/texlive/upgrade.html
+    # Run update
+    tlmgr update --self --all || return 1
 
-# FIXME: tlmgr
-# https://tex.stackexchange.com/questions/483613/unable-to-connect-via-tlmgr
+    # Remake the lualatex/fontspec cache
+    luaotfload-tool -fu || return 1
 
-# FIXME: sudo tlmgr update --list
-# FIXME: sudo tlmgr update --all
-
-# FIXME:
-# https://tex.stackexchange.com/questions/27993/can-i-download-ctan-packages-from-the-command-line-ubuntu
-
+    # Update system path
+    # tlmgr path add
 }
 
 texlive_display_info()
@@ -286,3 +278,18 @@ case $1 in
         texlive_usage "$@"
         ;;
 esac
+
+
+### references
+#
+## TeX Live - Quick install for Unix
+## https://tug.org/texlive/quickinstall.html
+#
+## Upgrade from TeX Live 2022 to 2023
+## https://tug.org/texlive/upgrade.html
+#
+## Unable to connect via tlmgr
+## https://tex.stackexchange.com/questions/483613/unable-to-connect-via-tlmgr
+#
+## Can I download CTAN packages from the command-line?
+## https://tex.stackexchange.com/questions/27993/can-i-download-ctan-packages-from-the-command-line-ubuntu
