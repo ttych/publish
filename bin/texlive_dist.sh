@@ -12,6 +12,11 @@ TEXLIVE_INSTALLER_URL="${TEXLIVE_INSTALLER_URL:-http://mirror.ctan.org/systems/t
 TEXLIVE_UPDATER_SCRIPT="update-tlmgr-latest.sh"
 TEXLIVE_UPDATER_URL="${TEXLIVE_UPDATER_URL:-https://mirror.ctan.org/systems/texlive/tlnet/$TEXLIVE_UPDATER_SCRIPT}"
 
+TEXLIVE_TEST_FILES="small2e.tex sample2e.tex"
+# testpage.tex
+# nfssfont.tex testfont.tex"
+# story.tex
+
 
 ###
 
@@ -179,12 +184,15 @@ texlive_test_dist()
     (
         set -e
         cd "$texlive_test_dist__tmp"
-        echo -n "# TeXlive test with $(which latex) ... "
-        if latex small2e >/dev/null; then
-            echo  OK
-        else
-            echo FAILED
-        fi
+        echo "# TeXlive test with $(which latex):"
+        for texlive_test_dist__f in $TEXLIVE_TEST_FILES; do
+            echo -n "#  - ${texlive_test_dist__f}  "
+            if latex "$texlive_test_dist__f"; then
+                echo OK
+            else
+                echo FAILED
+            fi
+        done
     )
     rm -Rf "$texlive_test_dist__tmp"
 }
