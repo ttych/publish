@@ -1,0 +1,34 @@
+#!/bin/sh
+# -*- mode: sh -*-
+
+build_with_dist_do()
+{
+    set -x
+    build_with_dist_do__dist="${1%/}"
+    shift
+
+    [ -z "$build_with_dist_do__dist" ] && return 1
+    [ -d "$build_with_dist_do__dist" ] || return 1
+
+    case "$build_with_dist_do__dist" in
+        */lib)
+            build_with_dist_do__lib="$build_with_dist_do__dist"
+            build_with_dist_do__pkgconfig="$build_with_dist_do__dist/lib"
+            ;;
+        */lib/pkgconfig)
+            build_with_dist_do__lib="$build_with_dist_do__dist/.."
+            build_with_dist_do__pkgconfig="$build_with_dist_do__dist"
+            ;;
+        *)
+            build_with_dist_do__lib="$build_with_dist_do__dist/lib"
+            build_with_dist_do__pkgconfig="$build_with_dist_do__dist/lib/pkgconfig"
+            ;;
+    esac
+
+    [ -d "$build_with_dist_do__lib" ] || build_with_dist_do__lib=
+    [ -d "$build_with_dist_do__pkgconfig" ] || build_with_dist_do__pkgconfig=
+
+    env ${build_with_dist_do__lib:+LD_RUN_PATH="$build_with_dist_do__lib"} ${build_with_dist_do__pkgconfig:+PKG_CONFIG_PATH="$build_with_dist_do__pkgconfig"} "$@"
+}
+
+build_with_dist_do "$@"
