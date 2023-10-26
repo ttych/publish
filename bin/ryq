@@ -1,0 +1,3 @@
+#!/bin/sh
+
+ruby -ryaml -e 'ryq = YAML.load(ARGF.read);'"$@"
