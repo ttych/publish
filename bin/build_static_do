@@ -1,9 +1,0 @@
-#!/bin/sh
-# -*- mode: sh -*-
-
-build_static_do()
-{
-    env LDFLAGS="\"${LDFLAGS:+$LDFLAGS }-static\"" "$@"
-}
-
-build_static_do "$@"
