@@ -3,7 +3,7 @@
 
 build_with()
 {
-    set -x
+    # set -x
 
     build_with__include=
     build_with__cppinclude=
