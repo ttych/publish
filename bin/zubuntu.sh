@@ -85,6 +85,13 @@ apt_source_add()
         echo "$1" >> "$apt_source_add__file"
 }
 
+apt_source_purge()
+{
+    apt_source_purge__file="${2:-/etc/apt/sources.list}"
+
+    > "$apt_source_purge__file"
+}
+
 apt_purge()
 {
     apt purge --yes "$@"
@@ -485,10 +492,11 @@ EOF
 
 sys_apt_sources()
 {
-    apt_source_add "deb http://archive.ubuntu.com/ubuntu ${UBUNTU_CODENAME} main restricted universe multivers" "$MNT"/etc/apt/sources.list
-    apt_source_add "deb http://archive.ubuntu.com/ubuntu ${UBUNTU_CODENAME}-updates main restricted universe multiverse" "$MNT"/etc/apt/sources.list
-    apt_source_add "deb http://archive.ubuntu.com/ubuntu ${UBUNTU_CODENAME}-backports main restricted universe multiverse" "$MNT"/etc/apt/sources.list
-    apt_source_add "deb http://security.ubuntu.com/ubuntu ${UBUNTU_CODENAME}-security main restricted universe multiverse" "$MNT"/etc/apt/sources.list
+    apt_source_purge "" "$MNT"/etc/apt/sources.list
+    apt_source_add "deb http://archive.ubuntu.com/ubuntu/ ${UBUNTU_CODENAME} main restricted universe multivers" "$MNT"/etc/apt/sources.list
+    apt_source_add "deb http://archive.ubuntu.com/ubuntu/ ${UBUNTU_CODENAME}-updates main restricted universe multiverse" "$MNT"/etc/apt/sources.list
+    apt_source_add "deb http://security.ubuntu.com/ubuntu/ ${UBUNTU_CODENAME}-security main restricted universe multiverse" "$MNT"/etc/apt/sources.list
+    apt_source_add "deb http://archive.ubuntu.com/ubuntu/ ${UBUNTU_CODENAME}-backports main restricted universe multiverse" "$MNT"/etc/apt/sources.list
 }
 
 sys_fs_loop()
@@ -627,7 +635,7 @@ user_admin()
         -o canmount=on -o mountpoint=/home/"$user_admin" \
         rpool/DATA/home/"$user_admin"
 
-    useradd -p '*' -G adm,cdrom,dip,lpadmin,lxd,plugdev,sambashare,sudo "$user_admin"
+    useradd -u "$user_admin_id" -p '*' -G adm,cdrom,dip,lpadmin,lxd,plugdev,sambashare,sudo "$user_admin"
 
     mkdir -p /home/"$user_admin"/.ssh
     chmod 0700 /home/"$user_admin"/.ssh
