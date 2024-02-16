@@ -1,0 +1,3 @@
+#!/bin/sh
+
+octodown --live-reload --style github "$@"
