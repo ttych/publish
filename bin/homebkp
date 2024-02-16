@@ -26,11 +26,11 @@ HOMEBKP_CONF="${HOMEBKP_CONF:-$HOME/.homebkp}"
 HOMEBKP_HOME="${HOMEBKP_HOME:-$HOME}"
 HOMEBKP_SERVER="${HOMEBKP_SERVER:-homebkp:/backup/$HOMEBKP_HOME}"
 HOMEBKP_SYNCLIST_SEP="${HOMEBKP_SYNCLIST_SEP:-;}"
-HOMEBKP_SYNCLIST_DEFAULT="etc;Desktop;Documents;.dotfiles;.zprofile;.zshrc;.bashrc;.profile;.emacs.d;.tmux.conf;.tmux;.screenrc;.ssh;.utilsh;org;.gitconfig;.gemrc;.irbrc;.password-store;.password-store_common;.gnupg;.hgrc;.Xresources;.xbindkeysrc;.mozilla;.config;"
+HOMEBKP_SYNCLIST_DEFAULT="etc;Desktop;Documents;org;snap;.dotfiles;.zprofile;.zshrc;.bashrc;.profile;.emacs.d;.tmux.conf;.tmux;.screenrc;.ssh;.utilsh;.gitconfig;.gemrc;.irbrc;.password-store;.password-store_common;.gnupg;.hgrc;.Xresources;.xbindkeysrc;.mozilla;.config;"
 HOMEBKP_SYNCLIST="${HOMEBKP_SYNCLIST:-$HOMEBKP_SYNCLIST_DEFAULT}"
 HOMEBKP_SYNCLIST_TMP="${TMPDIR}/${SCRIPT_NAME}.$(id -u).$$.synclist"
 # HOMEBKP_SYNCLIST_FILTERS="${HOMEBKP_SYNCLIST_FILTERS:--f'- *webm' -f'- *mp4' -f'- *mkv' -f'- *mp3'}"
-HOMEBKP_SYNCLIST_EXCLUDES="*.webm *.vtt *.mp4 *.mkv *.avi *.mp3"
+# HOMEBKP_SYNCLIST_EXCLUDES="*.webm *.vtt *.mp4 *.mkv *.avi *.mp3"
 
 
 ########## run
