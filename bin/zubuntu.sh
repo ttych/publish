@@ -273,7 +273,7 @@ step_post_zfs_boot_menu()
 {
     apt_install curl || return 1
 
-    zfs set org.zfsbootmenu:commandline="quiet" "$POOL_NAME/ROOT" || return 1
+    zfs set org.zfsbootmenu:commandline="verbose" "$POOL_NAME/ROOT" || return 1
 
     if [ -n "$DISK1" ]; then
         BOOT_DISK1=$(realpath "$DISK1")
