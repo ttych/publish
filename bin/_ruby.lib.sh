@@ -48,7 +48,8 @@ GEM_PACK_UTILS="$GEM_PACK_TOOLS"
 GEM_PACK_RUBY="prism pry rbs geminabox"
 GEM_PACK_QUALITY="rubocop reek flay flog erb_lint"
 GEM_PACK_CLI="gli main"
-GEM_PACK_CODE="bump rdoc semver yard solargraph $GEM_PACK_CLI $GEM_PACK_TEST $GEM_PACK_QUALITY $GEM_PACK_RUBY"
+GEM_PACK_LSP="solargraph ruby-lsp"
+GEM_PACK_CODE="bump rdoc semver yard $GEM_PACK_CLI $GEM_PACK_TEST $GEM_PACK_QUALITY $GEM_PACK_RUBY $GEM_PACK_LSP"
 GEM_PACK_DEV="$GEM_PACK_CODE"
 
 # default
