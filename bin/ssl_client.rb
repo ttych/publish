@@ -160,6 +160,6 @@ port = ARGV[1]
 raise 'please specify at least a host !' if !host || host.empty?
 
 ssl_client = SslClient.new
-ssl_info = ssl_client.get_ssl_info(host: 'www.google.fr', port: port)
+ssl_info = ssl_client.get_ssl_info(host: host, port: port)
 
 display_data_h(ssl_info.to_h)
