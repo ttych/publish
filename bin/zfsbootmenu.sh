@@ -27,9 +27,20 @@ ZFSBOOTMENU_PATH="EFI/ZBM"
 ZFSBOOTMENU_FILEPATH="$ZFSBOOTMENU_PATH/VMLINUZ.EFI"
 ZFSBOOTMENU_BACKUP_FILEPATH="$ZFSBOOTMENU_PATH/VMLINUZ-BACKUP.EFI"
 
+zfsbootmenu_get_device_info()
+{
+    lsblk --noheadings --pairs --paths --output NAME,FSTYPE,TYPE,MOUNTPOINTS "$1"
+}
+
+zfsbootmenu_get_parent_device_info()
+{
+    eval $(lsblk --noheadings --pairs --paths --output NAME,TYPE --inverse "$1" | grep -v "NAME=\"$1\"")
+    echo $NAME
+}
+
 zfsbootmenu_check_device()
 {
-    lsblk --noheadings --pairs --paths --output NAME,FSTYPE,TYPE,MOUNTPOINTS "$1" | zfsbootmenu_check_device_pipe "$1"
+    zfsbootmenu_get_device_info "$1" | zfsbootmenu_check_device_pipe "$1"
 }
 
 zfsbootmenu_check_device_pipe()
@@ -58,6 +69,27 @@ zfsbootmenu_check_device_pipe()
 zfsbootmenu_get_mountpoint()
 {
     lsblk --noheadings --output  MOUNTPOINTS "$1"
+}
+
+zfsbootmenu_efibootmgr()
+{
+    set -x
+    zfsbootmenu_efibootmgr__device="$1"
+    zfsbootmenu_efibootmgr__disk=$(zfsbootmenu_get_parent_device_info "$zfsbootmenu_efibootmgr__device")
+    if [ -z "$zfsbootmenu_efibootmgr__disk" ]; then
+        zfsbootmenu_efibootmgr__disk=XXX
+        zfsbootmenu_efibootmgr__part=XXX
+    else
+        zfsbootmenu_efibootmgr__part="${zfsbootmenu_efibootmgr__device#$zfsbootmenu_efibootmgr__disk}"
+        zfsbootmenu_efibootmgr__part="${zfsbootmenu_efibootmgr__part##*[a-z]}"
+    fi
+
+    cat <<EOF >&2
+# > don't forget to run (ADAPT the commands if needed) :
+#
+#   efibootmgr -c -d "$zfsbootmenu_efibootmgr__disk" -p "$zfsbootmenu_efibootmgr__part" -L "ZFSBootMenu (Backup)" -l '$(echo $ZFSBOOTMENU_BACKUP_FILEPATH | sed -e 's,/,\\,g')'
+#   efibootmgr -c -d "$zfsbootmenu_efibootmgr__disk" -p "$zfsbootmenu_efibootmgr__part" -L "ZFSBootMenu" -l '$(echo $ZFSBOOTMENU_FILEPATH | sed -e 's,/,\\,g')'
+EOF
 }
 
 zfsbootmenu_usage()
@@ -110,6 +142,8 @@ zfsbootmenu()
             return 1
         }
     fi
+
+    zfsbootmenu_efibootmgr "$zfsbootmenu__device"
 }
 
 
