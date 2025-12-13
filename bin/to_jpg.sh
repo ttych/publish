@@ -26,7 +26,6 @@ convert
 
 find_convert_bin()
 {
-    set -x
     if [ -n "$CONVERT_BIN" ]; then
         return
     fi
@@ -70,7 +69,7 @@ convert()
     convert__quality="$QUALITY"
     convert__rotate="$ROTATE"
 
-    set -x
+    # set -x
     command \
         $CONVERT_BIN \
         -monitor \
@@ -82,11 +81,11 @@ convert()
         ${convert__rotate:+-rotate $convert__rotate} \
         -strip \
         -sampling-factor 1x1 \
-        interlace none \
-        -colorspace sRGB \
+        -interlace none \
         "$convert__target"
     # -units PixelsPerInch
     # -interlace Plane
+    # -colorspace sRGB
 }
 
 
