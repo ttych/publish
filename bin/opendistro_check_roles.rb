@@ -73,11 +73,11 @@ rescue => e
   indices = []
 end
 
-roles_with_index_perms = roles.select { |_, v| v['indices'] && !v['indices'].empty? }
+roles_with_index_perms = roles.select { |_, v| v['index_permissions'] && !v['index_permissions'].empty? }
 roles_without_matching_indices = []
 
 roles_with_index_perms.each do |role, data|
-  patterns = data['indices'].flat_map { |perm| perm['index_patterns'] || [] }
+  patterns = data['index_permissions'].flat_map { |perm| perm['index_patterns'] || [] }
   next if patterns.empty?
   matched = patterns.any? do |pat|
     indices.any? { |idx| pattern_matches_index?(pat, idx) }
@@ -91,7 +91,7 @@ puts roles_without_matching_indices.empty? ? "None" : roles_without_matching_ind
 # 2. Overlapping index patterns between roles
 role_patterns = {}
 roles_with_index_perms.each do |role, data|
-  patterns = data['indices'].flat_map { |perm| perm['index_patterns'] || [] }
+  patterns = data['index_permissions'].flat_map { |perm| perm['index_patterns'] || [] }
   role_patterns[role] = patterns.uniq
 end
 
