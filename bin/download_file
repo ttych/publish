@@ -1,0 +1,29 @@
+#!/bin/sh
+# -*- mode: sh -*-
+
+
+download_file() {
+    local url="$1"
+    local output="$2"
+
+    if command -v curl >/dev/null 2>&1; then
+        if [ -n "$output" ]; then
+            curl -fsSL -o "$output" "$url"
+        else
+            curl -fsSL "$url"
+        fi
+    elif command -v wget >/dev/null 2>&1; then
+        if [ -n "$output" ]; then
+            wget -q -O "$output" "$url"
+        else
+            wget -q -O - "$url"
+        fi
+    else
+        return 1
+    fi
+}
+
+
+case "$0" in
+    */download_file) download_file "$@" ;;
+esac
