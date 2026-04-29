@@ -1,0 +1,57 @@
+#!/bin/sh
+# -*- mode: sh -*-
+
+set -euo pipefail
+
+
+memtest86plus2sd()
+{
+  memtest86plus2sd__usage="\
+Usage: memtest86plus2sd [-h] [-v version] <device>
+
+Example: memtest86plus2sd -v 8.00 /dev/sda
+
+Available devices:
+"$(lsblk -d -o NAME | grep -e '^sd[a-z]' | awk '{print "/dev/"$1}')
+  memtest86plus2sd__version="8.00"
+
+  OPTIND=1
+  while getopts :hxv: opt; do
+    case $opt in
+      h) printf >&2"%s\n" "$memtest86plus2sd__usage" ; return 0 ;;
+      x) set -x ;;
+      v) memtest86plus2sd__version+"$OPTARG" ;;
+    esac
+  done
+  shift $(($OPTIND - 1))
+
+  if [ $# -ne 1 ]; then
+    printf >&2 "%s\n" "$memtest86plus2sd__usage"
+    return 1
+  fi
+
+  memtest86plus2sd__device="$1"
+
+  lsblk "$memtest86plus2sd__device" > /dev/null || {
+    printf >&2 "%s\n" "#> verify device $memtest86plus2sd__device"
+    return 1
+  }
+
+  memtest86plus2sd__url="https://memtest.org/download/v${memtest86plus2sd__version}/mt86plus_${memtest86plus2sd__version}_$(uname -m).iso.zip"
+  memtest86plus2sd__tmp_zip="${TMPDIR:-/tmp}/mt86plus.iso.zip"
+  memtest86plus2sd__tmp_iso="${TMPDIR:-/tmp}/memtest.iso"
+
+  wget "$memtest86plus2sd__url" -O "$memtest86plus2sd__tmp_zip"
+  unzip "$memtest86plus2sd__tmp_zip" -d "${TMPDIR:-/tmp}"
+
+  dd bs=4M status=progress oflag=sync if="$memtest86plus2sd__tmp_iso" of="$memtest86plus2sd__device" || {
+    echo >&2 "#> failed to write $memtest86plus2sd__tmp_iso on $memtest86plus2sd__device"
+    return 1
+  }
+
+  rm -f "$memtest86plus2sd__tmp_zip" "$memtest86plus2sd__tmp_iso"
+
+  eject "$memtest86plus2sd__device"
+}
+
+memtest86plus2sd "$@"
