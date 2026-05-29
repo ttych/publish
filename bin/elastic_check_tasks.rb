@@ -95,8 +95,7 @@ def fetch_tasks(base_uri, http, username, password)
   data = fetch_json(http, req)
   return {} unless data
 
-  tasks = data.dig('tasks') || {}
-  tasks.values
+  data.dig('tasks') || {}
 end
 
 def fetch_pending_tasks(base_uri, http, username, password)
@@ -109,7 +108,10 @@ end
 
 def display_tasks(tasks)
   counts = Hash.new(0)
-  tasks.each { |t| counts[t['action']] += 1 }
+  tasks.each do |task|
+    normalized_action = task['action'].gsub(/\[.*?\]/, '')
+    counts[normalized_action] += 1
+  end
 
   if counts.any?
     counts.sort_by { |_, v| -v }.each do |action, count|
@@ -119,7 +121,17 @@ def display_tasks(tasks)
 end
 
 def display_pending_tasks(pending_tasks)
-  puts format('Cluster Tasks: %d', pending_tasks.size)
+  counts = Hash.new(0)
+  pending_tasks.each do |t|
+    source = t['source'].to_s
+    category = source.split('[').first.strip
+    category = '(unknown)' if category.empty?
+    counts[category] += 1
+  end
+
+  counts.sort_by { |_, v| -v }.each do |category, count|
+    puts format('Cluster pending task %-56s: %d', category, count)
+  end
 end
 
 base_uri = URI.parse(options[:url])
