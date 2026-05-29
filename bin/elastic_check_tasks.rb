@@ -124,13 +124,13 @@ def display_pending_tasks(pending_tasks)
   counts = Hash.new(0)
   pending_tasks.each do |t|
     source = t['source'].to_s
-    category = source.split('[').first.strip
+    category = source.split.first.strip
     category = '(unknown)' if category.empty?
     counts[category] += 1
   end
 
   counts.sort_by { |_, v| -v }.each do |category, count|
-    puts format('Cluster pending task %-56s: %d', category, count)
+    puts format('Pending Task %-52s: %d', category, count)
   end
 end
 
