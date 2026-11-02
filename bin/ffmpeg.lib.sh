@@ -75,6 +75,11 @@ audio_codec_to_ext()
   esac
 }
 
+audio2wav()
+{
+  _ffmpeg -i "$1" -ar 48000 -ac 1 -c:a pcm_s24le "${1%.*}.wav"
+}
+
 audiofrom()
 {
   audiofrom_usage()
