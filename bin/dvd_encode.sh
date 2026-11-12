@@ -131,7 +131,7 @@ case $AUDIO_ENCODER_TYPE in
      ;;
 esac
 
-encodeur SOURCE="$1"
+SOURCE="$1"
 if [ ! -r "$SOURCE" ]; then
     echo2 "$SOURCE is not readable"
     exit 1
