@@ -114,7 +114,7 @@ case $VIDEO_ENCODER_TYPE in
     VIDEO_ENCODER=svt_av1_10bit
     VIDEO_ENCODER_PRESET=2
     VIDEO_ENCODER_PROFILE="${VIDEO_ENCODER_PROFILE:-main}"
-    VIDEO_QUALITY="${VIDEO_QUALITY:-26}"
+    VIDEO_QUALITY="${VIDEO_QUALITY:-25}"
     ;;
   *) echo2 "unsupported video encoder type: $VIDEO_ENCODER_TYPE"
      exit 1
@@ -131,7 +131,7 @@ case $AUDIO_ENCODER_TYPE in
      ;;
 esac
 
-SOURCE="$1"
+encodeur SOURCE="$1"
 if [ ! -r "$SOURCE" ]; then
     echo2 "$SOURCE is not readable"
     exit 1
